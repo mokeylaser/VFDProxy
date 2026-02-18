@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>VFDProxy</RootNamespace>
+    <AssemblyName>VFDProxy</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- Single-file self-contained publish -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishReadyToRun>true</PublishReadyToRun>
+
+    <Version>0.1.0</Version>
+    <Authors>VFDProxy</Authors>
+    <Description>GRBL ↔ Huanyang VFD proxy for CNC senders (Candle etc.)</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Serial port support (must be explicit in .NET 8+) -->
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <!-- WMI for friendly COM port names -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

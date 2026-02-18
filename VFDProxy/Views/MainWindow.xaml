@@ -1,0 +1,388 @@
+<Window x:Class="VFDProxy.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cv="clr-namespace:VFDProxy.Views.Converters"
+        Title="VFD Proxy"
+        Width="940" Height="720"
+        MinWidth="800" MinHeight="600"
+        Background="{StaticResource BackgroundBrush}"
+        Closing="Window_Closing">
+
+    <Window.Resources>
+        <cv:ProxyStateToColorConverter       x:Key="StateToColor"/>
+        <cv:LogLevelToColorConverter         x:Key="LevelToColor"/>
+        <cv:BoolToVisibilityConverter        x:Key="BoolToVis"/>
+        <cv:InverseBoolToVisibilityConverter x:Key="InvBoolToVis"/>
+        <cv:BoolToColorConverter             x:Key="BoolToStatusColor">
+            <cv:BoolToColorConverter.TrueColor>
+                <SolidColorBrush Color="LimeGreen"/>
+            </cv:BoolToColorConverter.TrueColor>
+            <cv:BoolToColorConverter.FalseColor>
+                <SolidColorBrush Color="Gray"/>
+            </cv:BoolToColorConverter.FalseColor>
+        </cv:BoolToColorConverter>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- status bar -->
+            <RowDefinition Height="*"/>     <!-- main content -->
+            <RowDefinition Height="Auto"/>  <!-- bottom bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ══ TOP STATUS BAR ══ -->
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- App title -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="VFD Proxy"
+                               FontWeight="Bold" FontSize="14"
+                               Foreground="{StaticResource AccentBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text=" v0.1"
+                               Foreground="{StaticResource ForegroundDimBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- State indicator -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Style="{StaticResource StatusDotStyle}"
+                             Fill="{Binding State, Converter={StaticResource StateToColor}}"/>
+                    <TextBlock Text="{Binding StatusText}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ══ MAIN CONTENT ══ -->
+        <Grid Grid.Row="1" Margin="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="340" MinWidth="280"/>
+                <ColumnDefinition Width="4"/>  <!-- splitter -->
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- LEFT COLUMN: connections + controls + job behavior -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,4,0">
+
+                    <!-- ── CONNECTION PANEL ── -->
+                    <Border Style="{StaticResource SectionBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="CONNECTIONS" Style="{StaticResource GroupHeaderStyle}"/>
+
+                            <!-- Virtual COM pair -->
+                            <TextBlock Text="Virtual COM pair (com0com)"
+                                       Style="{StaticResource LabelStyle}" Margin="0,4,0,4"/>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Candle side" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
+                                              DisplayMemberPath="PortName"
+                                              SelectedValuePath="PortName"
+                                              SelectedValue="{Binding ConnectionPanel.VirtualPortCandle}"
+                                              IsEnabled="{Binding IsDisconnected}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Proxy side" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
+                                              DisplayMemberPath="PortName"
+                                              SelectedValuePath="PortName"
+                                              SelectedValue="{Binding ConnectionPanel.VirtualPortProxy}"
+                                              IsEnabled="{Binding IsDisconnected}"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Separator Background="{StaticResource BorderBrush}" Margin="0,6,0,6"/>
+
+                            <!-- GRBL -->
+                            <TextBlock Text="GRBL Controller" Style="{StaticResource LabelStyle}"/>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="100"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Port" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
+                                              DisplayMemberPath="PortName"
+                                              SelectedValuePath="PortName"
+                                              SelectedValue="{Binding ConnectionPanel.GrblPort}"
+                                              IsEnabled="{Binding IsDisconnected}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Baud" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding ConnectionPanel.BaudRates}"
+                                              SelectedItem="{Binding ConnectionPanel.GrblBaud}"
+                                              IsEnabled="{Binding IsDisconnected}"/>
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <Ellipse Style="{StaticResource StatusDotStyle}"
+                                         Fill="{Binding IsConnected, Converter={StaticResource BoolToStatusColor}}"/>
+                                <TextBlock Text="{Binding ConnectionPanel.GrblStatus}"
+                                           Style="{StaticResource LabelStyle}" Margin="0"/>
+                            </StackPanel>
+
+                            <Separator Background="{StaticResource BorderBrush}" Margin="0,6,0,6"/>
+
+                            <!-- VFD RS-485 -->
+                            <TextBlock Text="Spindle VFD (RS-485)" Style="{StaticResource LabelStyle}"/>
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="100"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Port" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
+                                              DisplayMemberPath="PortName"
+                                              SelectedValuePath="PortName"
+                                              SelectedValue="{Binding ConnectionPanel.VfdPort}"
+                                              IsEnabled="{Binding IsDisconnected}"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Baud" Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding ConnectionPanel.BaudRates}"
+                                              SelectedItem="{Binding ConnectionPanel.VfdBaud}"
+                                              IsEnabled="{Binding IsDisconnected}"/>
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Ellipse Style="{StaticResource StatusDotStyle}"
+                                         Fill="{Binding IsConnected, Converter={StaticResource BoolToStatusColor}}"/>
+                                <TextBlock Text="{Binding ConnectionPanel.VfdStatus}"
+                                           Style="{StaticResource LabelStyle}" Margin="0"/>
+                            </StackPanel>
+
+                            <!-- Refresh + Connect/Disconnect -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0"
+                                        Content="Refresh Ports"
+                                        Command="{Binding ConnectionPanel.RefreshPortsCommand}"/>
+                                <Button Grid.Column="2"
+                                        Content="Connect"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        Command="{Binding ConnectCommand}"
+                                        Visibility="{Binding IsDisconnected, Converter={StaticResource BoolToVis}}"/>
+                                <Button Grid.Column="2"
+                                        Content="Disconnect"
+                                        Command="{Binding DisconnectCommand}"
+                                        Visibility="{Binding IsConnected, Converter={StaticResource BoolToVis}}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── SPINDLE CONTROLS ── -->
+                    <Border Style="{StaticResource SectionBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="SPINDLE CONTROL" Style="{StaticResource GroupHeaderStyle}"/>
+
+                            <!-- Big STOP button -->
+                            <Button Content="⬛  STOP SPINDLE NOW"
+                                    Style="{StaticResource DangerButtonStyle}"
+                                    Command="{Binding ControlsPanel.StopSpindleCommand}"
+                                    HorizontalAlignment="Stretch"
+                                    Margin="0,0,0,10"/>
+
+                            <!-- Spindle state display -->
+                            <TextBlock Text="{Binding ControlsPanel.SpindleStateDisplay}"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{StaticResource ForegroundBrush}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,8"/>
+
+                            <!-- Manual RPM -->
+                            <TextBlock Text="Manual RPM" Style="{StaticResource LabelStyle}"/>
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="4"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding ControlsPanel.ManualRpm, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsConnected}"/>
+                                <Button Grid.Column="2" Content="▶ CW"
+                                        Command="{Binding ControlsPanel.RunCwCommand}"/>
+                                <Button Grid.Column="4" Content="◀ CCW"
+                                        Command="{Binding ControlsPanel.RunCcwCommand}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ── JOB BEHAVIOR ── -->
+                    <Border Style="{StaticResource SectionBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="JOB BEHAVIOR" Style="{StaticResource GroupHeaderStyle}"/>
+
+                            <CheckBox Content="Route spindle commands to VFD (M3/M4/M5/S)"
+                                      IsChecked="{Binding JobBehavior.StripSpindleCommands}"
+                                      Margin="0,2"/>
+                            <CheckBox Content="Discard tool changes (T#, M6) — return ok"
+                                      IsChecked="{Binding JobBehavior.StripToolChanges}"
+                                      Margin="0,2"/>
+                            <CheckBox Content="Treat M0/M1 as pause — return ok"
+                                      IsChecked="{Binding JobBehavior.TreatM0M1AsPause}"
+                                      Margin="0,2"/>
+                            <CheckBox Content="Strip coolant commands (M7/M8/M9)"
+                                      IsChecked="{Binding JobBehavior.StripCoolant}"
+                                      Margin="0,2"/>
+                            <CheckBox Content="Auto-stop spindle on disconnect"
+                                      IsChecked="{Binding JobBehavior.AutoStopOnDisconnect}"
+                                      Margin="0,2"/>
+                            <CheckBox Content="M4 = CCW (otherwise treated as CW)"
+                                      IsChecked="{Binding JobBehavior.M4IsCcw}"
+                                      Margin="0,2"/>
+
+                            <Separator Background="{StaticResource BorderBrush}" Margin="0,8,0,8"/>
+
+                            <!-- VFD settings -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Max RPM" Style="{StaticResource LabelStyle}"/>
+                                <TextBox   Grid.Row="1" Grid.Column="0"
+                                           Text="{Binding JobBehavior.MaxRpm, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <TextBlock Grid.Row="0" Grid.Column="2" Text="VFD Slave Addr" Style="{StaticResource LabelStyle}"/>
+                                <TextBox   Grid.Row="1" Grid.Column="2"
+                                           Text="{Binding JobBehavior.VfdSlaveAddr, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Min Hz" Style="{StaticResource LabelStyle}" Margin="0,6,0,2"/>
+                                <TextBox   Grid.Row="3" Grid.Column="0"
+                                           Text="{Binding JobBehavior.MinHz, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="Max Hz" Style="{StaticResource LabelStyle}" Margin="0,6,0,2"/>
+                                <TextBox   Grid.Row="3" Grid.Column="2"
+                                           Text="{Binding JobBehavior.MaxHz, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1"
+                          Width="4"
+                          HorizontalAlignment="Stretch"
+                          Background="{StaticResource BorderBrush}"/>
+
+            <!-- RIGHT COLUMN: log panel -->
+            <Border Grid.Column="2"
+                    Style="{StaticResource SectionBorderStyle}"
+                    Margin="4,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,6">
+                        <TextBlock Text="LOG" Style="{StaticResource GroupHeaderStyle}" Margin="0"/>
+                    </StackPanel>
+
+                    <ListView Grid.Row="1"
+                              x:Name="LogListView"
+                              ItemsSource="{Binding Log.Entries}"
+                              Background="{StaticResource BackgroundBrush}"
+                              BorderThickness="0"
+                              FontFamily="Cascadia Code, Consolas, Courier New"
+                              FontSize="11"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding"          Value="2,1"/>
+                                <Setter Property="Background"       Value="Transparent"/>
+                                <Setter Property="BorderThickness"  Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock>
+                                    <Run Text="{Binding FormattedTime}" Foreground="#555555"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding LevelTag}"
+                                         Foreground="{Binding Level, Converter={StaticResource LevelToColor}}"/>
+                                    <Run Text=" "/>
+                                    <Run Text="{Binding Message}"
+                                         Foreground="{Binding Level, Converter={StaticResource LevelToColor}}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+
+                    <Button Grid.Row="2"
+                            Content="Clear Log"
+                            Command="{Binding Log.ClearCommand}"
+                            HorizontalAlignment="Left"
+                            Margin="0,6,0,0"/>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ══ BOTTOM BAR ══ -->
+        <Border Grid.Row="2"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="12,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="OrangeRed"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+                <Button Grid.Column="1"
+                        Content="⬛  EMERGENCY STOP"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Command="{Binding EmergencyStopCommand}"
+                        Padding="16,4"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
