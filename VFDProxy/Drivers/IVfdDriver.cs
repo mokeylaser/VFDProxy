@@ -4,6 +4,7 @@ namespace VFDProxy.Drivers;
 
 public interface IVfdDriver : IDisposable
 {
+    void Configure(byte slaveAddr);
     Task OpenAsync(string portName, int baud, CancellationToken ct = default);
 
     /// <summary>Set output frequency in Hz (e.g. 400.0 for 24000 RPM, 2-pole).</summary>

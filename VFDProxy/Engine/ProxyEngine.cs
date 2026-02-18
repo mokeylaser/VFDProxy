@@ -18,7 +18,7 @@ public sealed class ProxyEngine : IProxyEngine
 {
     private readonly IVirtualComDriver _virtual;
     private readonly IGrblDriver       _grbl;
-    private readonly VfdDriver         _vfd;
+    private readonly IVfdDriver        _vfd;
 
     private AppConfig? _config;
 
@@ -29,6 +29,7 @@ public sealed class ProxyEngine : IProxyEngine
     private Channel<VfdCommand>? _vfdChannel;
 
     private ProxyState _state = ProxyState.Disconnected;
+    private volatile bool _vfdBusy; // set while VFD command loop is executing
 
     public ProxyState State => _state;
 
@@ -36,7 +37,7 @@ public sealed class ProxyEngine : IProxyEngine
     public event EventHandler<LogMessageEventArgs>?      LogMessage;
     public event EventHandler<VfdStatusUpdatedEventArgs>? VfdStatusUpdated;
 
-    public ProxyEngine(IVirtualComDriver virtualCom, IGrblDriver grbl, VfdDriver vfd)
+    public ProxyEngine(IVirtualComDriver virtualCom, IGrblDriver grbl, IVfdDriver vfd)
     {
         _virtual = virtualCom;
         _grbl    = grbl;
@@ -52,6 +53,12 @@ public sealed class ProxyEngine : IProxyEngine
         if (_state is ProxyState.Running or ProxyState.Connecting) return;
 
         _config = config;
+
+        // Validate and clamp config values before use
+        var issues = config.Validate();
+        foreach (var issue in issues)
+            Log(LogEntry.Warn($"Config: {issue}"));
+
         SetState(ProxyState.Connecting);
         Log(LogEntry.Info("Connecting to ports..."));
 
@@ -77,7 +84,11 @@ public sealed class ProxyEngine : IProxyEngine
         }
 
         _engineCts  = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _vfdChannel = Channel.CreateUnbounded<VfdCommand>(new UnboundedChannelOptions { SingleReader = true });
+        _vfdChannel = Channel.CreateBounded<VfdCommand>(new BoundedChannelOptions(16)
+        {
+            SingleReader = true,
+            FullMode     = BoundedChannelFullMode.DropOldest
+        });
 
         // Wire GRBL responses → Virtual COM (so Candle sees them)
         _grbl.ResponseReceived += OnGrblResponse;
@@ -213,7 +224,11 @@ public sealed class ProxyEngine : IProxyEngine
         {
             Log(LogEntry.Error($"Proxy loop fault: {ex.Message}"));
             SetState(ProxyState.Error, ex.Message);
-            _ = TeardownAsync(graceful: false);
+            try { await TeardownAsync(graceful: false); }
+            catch (Exception teardownEx)
+            {
+                Log(LogEntry.Error($"Teardown error: {teardownEx.Message}"));
+            }
         }
     }
 
@@ -293,12 +308,17 @@ public sealed class ProxyEngine : IProxyEngine
         {
             try
             {
+                _vfdBusy = true;
                 await ExecuteVfdCommandAsync(cmd, ct);
             }
             catch (OperationCanceledException) { break; }
             catch (Exception ex)
             {
                 Log(LogEntry.Error($"VFD command error: {ex.Message}"));
+            }
+            finally
+            {
+                _vfdBusy = false;
             }
         }
     }
@@ -364,6 +384,9 @@ public sealed class ProxyEngine : IProxyEngine
 
         while (await timer.WaitForNextTickAsync(ct))
         {
+            // Skip poll when VFD command loop is actively talking to the drive
+            if (_vfdBusy) continue;
+
             try
             {
                 var status = await _vfd.ReadStatusAsync(ct);

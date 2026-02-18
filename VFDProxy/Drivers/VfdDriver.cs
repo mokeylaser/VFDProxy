@@ -143,7 +143,7 @@ public sealed class VfdDriver : IVfdDriver
 
     /// <summary>
     /// Send a frame and read exactly <paramref name="expectedBytes"/> back.
-    /// Returns null on timeout or port error.
+    /// Returns null on timeout, CRC mismatch, or port error.
     /// </summary>
     private async Task<byte[]?> TransactAsync(byte[] frame, int expectedBytes, CancellationToken ct)
     {
@@ -165,11 +165,28 @@ public sealed class VfdDriver : IVfdDriver
             _port.RtsEnable = false;
 
             var response = await ReadBytesAsync(expectedBytes, ct);
+
+            // Validate response CRC — reject corrupted frames
+            if (response is not null && response.Length >= 4 && !ValidateResponseCrc(response))
+                return null;
+
             return response;
         }
         catch (OperationCanceledException) { return null; }
         catch (TimeoutException)           { return null; }
         catch (InvalidOperationException)  { return null; }
+    }
+
+    /// <summary>
+    /// Validates CRC-16/Modbus on a received response frame.
+    /// The last two bytes are [CRC_Lo][CRC_Hi]; CRC is computed over all preceding bytes.
+    /// </summary>
+    private static bool ValidateResponseCrc(byte[] response)
+    {
+        int payloadLen = response.Length - 2;
+        ushort computed = CalcCrc16(response, payloadLen);
+        ushort received = (ushort)(response[payloadLen] | (response[payloadLen + 1] << 8));
+        return computed == received;
     }
 
     private async Task<byte[]?> ReadBytesAsync(int count, CancellationToken ct)

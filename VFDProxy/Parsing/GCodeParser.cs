@@ -131,13 +131,15 @@ public static class GCodeParser
         return sb.ToString().TrimEnd();
     }
 
+    private static readonly Regex MultiSpace = new(@"\s+", RegexOptions.Compiled);
+
     private static string Normalize(string raw)
     {
         var s = ParenComment.Replace(raw, " ");
         s = SemiComment.Replace(s, string.Empty);
         s = s.ToUpperInvariant().Trim();
-        // Collapse multiple spaces
-        while (s.Contains("  ")) s = s.Replace("  ", " ");
+        // Collapse multiple spaces (single-pass)
+        s = MultiSpace.Replace(s, " ");
         return s;
     }
 

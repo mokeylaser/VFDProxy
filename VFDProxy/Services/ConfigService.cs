@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using VFDProxy.Models;
@@ -17,22 +18,31 @@ public static class ConfigService
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// Last error from Load or Save, if any. Null when the last operation succeeded.
+    /// </summary>
+    public static string? LastError { get; private set; }
+
     public static AppConfig Load()
     {
+        LastError = null;
         try
         {
             if (!File.Exists(ConfigFile)) return new AppConfig();
             var json = File.ReadAllText(ConfigFile);
             return JsonSerializer.Deserialize<AppConfig>(json, JsonOpts) ?? new AppConfig();
         }
-        catch
+        catch (Exception ex)
         {
+            LastError = $"Failed to load config: {ex.Message}";
+            Trace.TraceWarning(LastError);
             return new AppConfig();
         }
     }
 
     public static void Save(AppConfig config)
     {
+        LastError = null;
         try
         {
             Directory.CreateDirectory(ConfigDir);
@@ -40,9 +50,10 @@ public static class ConfigService
             File.WriteAllText(TempFile, json);
             File.Move(TempFile, ConfigFile, overwrite: true);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort; don't crash the app on save failure
+            LastError = $"Failed to save config: {ex.Message}";
+            Trace.TraceWarning(LastError);
         }
     }
 }

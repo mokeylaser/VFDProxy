@@ -483,3 +483,4 @@ D:\GIT\VFDProxy\VFDProxy\obj\Debug\net8.0-windows\win-x64\VFDProxy.csproj.CoreCo
 D:\GIT\VFDProxy\VFDProxy\obj\Debug\net8.0-windows\win-x64\VFDProxy.csproj.Up2Date
 D:\GIT\VFDProxy\VFDProxy\obj\Debug\net8.0-windows\win-x64\VFDProxy.genruntimeconfig.cache
 D:\GIT\VFDProxy\VFDProxy\obj\Debug\net8.0-windows\win-x64\ref\VFDProxy.dll
+D:\GIT\VFDProxy\VFDProxy\obj\Debug\net8.0-windows\win-x64\VFDProxy.sourcelink.json

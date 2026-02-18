@@ -71,6 +71,10 @@ public sealed class MainWindowViewModel : ViewModelBase
         JobBehavior     = new JobBehaviorViewModel();
         Log             = new LogPanelViewModel();
 
+        // Report config load errors to the log
+        if (ConfigService.LastError is not null)
+            Log.Add(LogEntry.Warn($"{ConfigService.LastError} — using defaults."));
+
         ConnectionPanel.ApplyConfig(_config);
         JobBehavior.ApplyConfig(_config);
 
@@ -124,8 +128,10 @@ public sealed class MainWindowViewModel : ViewModelBase
         DispatcherService.Invoke(() =>
         {
             VfdStatus = e.Status;
+            int polePairs = Math.Max(1, _config.PolePairs);
+            double rpm = e.Status.OutputFrequencyHz * 60.0 / polePairs;
             ControlsPanel.SpindleStateDisplay = e.Status.IsRunning
-                ? $"{(e.Status.IsForward ? "CW" : "CCW")} {e.Status.OutputFrequencyHz * 60:F0} RPM"
+                ? $"{(e.Status.IsForward ? "CW" : "CCW")} {rpm:F0} RPM"
                 : "Stopped";
         });
     }
@@ -135,7 +141,11 @@ public sealed class MainWindowViewModel : ViewModelBase
         ConnectionPanel.PersistToConfig(_config);
         JobBehavior.PersistToConfig(_config);
         ConfigService.Save(_config);
-        _ = _engine.EmergencyStopAsync();
+
+        // Block until the VFD stop command is actually sent — do not let the
+        // process exit while the spindle may still be running.
+        try { _engine.EmergencyStopAsync().GetAwaiter().GetResult(); }
+        catch { /* best-effort — process is exiting */ }
     }
 }
 

@@ -12,6 +12,7 @@ public sealed class VirtualComDriver : IVirtualComDriver
 {
     private SerialPort?    _port;
     private readonly object _writeLock = new();
+    private readonly object _readLock  = new();
     private readonly StringBuilder _lineBuffer = new();
 
     public event EventHandler<string>? LineReceived;
@@ -38,18 +39,21 @@ public sealed class VirtualComDriver : IVirtualComDriver
         try
         {
             var data = _port.ReadExisting();
-            foreach (var ch in data)
+            lock (_readLock)
             {
-                if (ch == '\n' || ch == '\r')
+                foreach (var ch in data)
                 {
-                    var line = _lineBuffer.ToString().Trim();
-                    _lineBuffer.Clear();
-                    if (line.Length > 0)
-                        LineReceived?.Invoke(this, line);
-                }
-                else
-                {
-                    _lineBuffer.Append(ch);
+                    if (ch == '\n' || ch == '\r')
+                    {
+                        var line = _lineBuffer.ToString().Trim();
+                        _lineBuffer.Clear();
+                        if (line.Length > 0)
+                            LineReceived?.Invoke(this, line);
+                    }
+                    else
+                    {
+                        _lineBuffer.Append(ch);
+                    }
                 }
             }
         }

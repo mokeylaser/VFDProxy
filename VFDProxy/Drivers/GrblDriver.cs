@@ -13,7 +13,8 @@ namespace VFDProxy.Drivers;
 /// </summary>
 public sealed class GrblDriver : IGrblDriver
 {
-    private const int GrblRxBufferSize = 127; // 128 - 1 for safety
+    private const int GrblRxBufferSize  = 127; // 128 - 1 for safety
+    private const int BufferWaitTimeoutMs = 5000; // watchdog for unresponsive GRBL
 
     private SerialPort?           _port;
     private CancellationTokenSource? _readCts;
@@ -92,7 +93,8 @@ public sealed class GrblDriver : IGrblDriver
                 if (_sentLengths.TryDequeue(out int freed))
                     _sentBytes -= freed;
             }
-            _bufferSem.Release();
+            try { _bufferSem.Release(); }
+            catch (SemaphoreFullException) { /* spurious response — ignore */ }
         }
 
         // Probe completion
@@ -129,8 +131,9 @@ public sealed class GrblDriver : IGrblDriver
                 }
             }
 
-            // Wait for a response to free up buffer space
-            await _bufferSem.WaitAsync(ct);
+            // Wait for a response to free up buffer space (with watchdog timeout)
+            if (!await _bufferSem.WaitAsync(BufferWaitTimeoutMs, ct))
+                throw new TimeoutException("GRBL not responding — buffer wait timed out.");
         }
 
         try
@@ -201,8 +204,12 @@ public sealed class GrblDriver : IGrblDriver
         }
 
         // Drain the semaphore so any awaiting SendLineAsync can unblock
-        while (_bufferSem.CurrentCount == 0)
-            _bufferSem.Release();
+        try
+        {
+            while (_bufferSem.CurrentCount == 0)
+                _bufferSem.Release();
+        }
+        catch (SemaphoreFullException) { /* already drained */ }
     }
 
     public void Dispose() => Close();
