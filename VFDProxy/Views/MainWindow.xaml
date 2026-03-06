@@ -340,12 +340,12 @@
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock>
-                                    <Run Text="{Binding FormattedTime}" Foreground="#555555"/>
+                                    <Run Text="{Binding FormattedTime, Mode=OneWay}" Foreground="#555555"/>
                                     <Run Text=" "/>
-                                    <Run Text="{Binding LevelTag}"
+                                    <Run Text="{Binding LevelTag, Mode=OneWay}"
                                          Foreground="{Binding Level, Converter={StaticResource LevelToColor}}"/>
                                     <Run Text=" "/>
-                                    <Run Text="{Binding Message}"
+                                    <Run Text="{Binding Message, Mode=OneWay}"
                                          Foreground="{Binding Level, Converter={StaticResource LevelToColor}}"/>
                                 </TextBlock>
                             </DataTemplate>
