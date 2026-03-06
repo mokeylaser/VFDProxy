@@ -94,16 +94,16 @@
                                     <TextBlock Text="Candle side" Style="{StaticResource LabelStyle}"/>
                                     <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
                                               DisplayMemberPath="PortName"
-                                              SelectedValuePath="PortName"
-                                              SelectedValue="{Binding ConnectionPanel.VirtualPortCandle}"
+                                              IsEditable="True"
+                                              Text="{Binding ConnectionPanel.VirtualPortCandle, UpdateSourceTrigger=LostFocus}"
                                               IsEnabled="{Binding IsDisconnected}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Proxy side" Style="{StaticResource LabelStyle}"/>
                                     <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
                                               DisplayMemberPath="PortName"
-                                              SelectedValuePath="PortName"
-                                              SelectedValue="{Binding ConnectionPanel.VirtualPortProxy}"
+                                              IsEditable="True"
+                                              Text="{Binding ConnectionPanel.VirtualPortProxy, UpdateSourceTrigger=LostFocus}"
                                               IsEnabled="{Binding IsDisconnected}"/>
                                 </StackPanel>
                             </Grid>
@@ -122,8 +122,8 @@
                                     <TextBlock Text="Port" Style="{StaticResource LabelStyle}"/>
                                     <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
                                               DisplayMemberPath="PortName"
-                                              SelectedValuePath="PortName"
-                                              SelectedValue="{Binding ConnectionPanel.GrblPort}"
+                                              IsEditable="True"
+                                              Text="{Binding ConnectionPanel.GrblPort, UpdateSourceTrigger=LostFocus}"
                                               IsEnabled="{Binding IsDisconnected}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
@@ -154,8 +154,8 @@
                                     <TextBlock Text="Port" Style="{StaticResource LabelStyle}"/>
                                     <ComboBox ItemsSource="{Binding ConnectionPanel.AllPorts}"
                                               DisplayMemberPath="PortName"
-                                              SelectedValuePath="PortName"
-                                              SelectedValue="{Binding ConnectionPanel.VfdPort}"
+                                              IsEditable="True"
+                                              Text="{Binding ConnectionPanel.VfdPort, UpdateSourceTrigger=LostFocus}"
                                               IsEnabled="{Binding IsDisconnected}"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">

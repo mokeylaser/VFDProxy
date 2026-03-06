@@ -81,9 +81,18 @@ public sealed class MainWindowViewModel : ViewModelBase
         ConnectionPanel.ApplyConfig(_config);
         JobBehavior.ApplyConfig(_config);
 
-        ConnectCommand = new AsyncRelayCommand(ConnectAsync, () => CanConnect);
-        DisconnectCommand = new AsyncRelayCommand(DisconnectAsync, () => IsConnected);
-        EmergencyStopCommand = new AsyncRelayCommand(() => _engine.EmergencyStopAsync());
+        var connectCmd = new AsyncRelayCommand(ConnectAsync, () => CanConnect);
+        connectCmd.CommandFailed += (_, ex) => Log.Add(LogEntry.Error($"Connect failed: {ex.Message}"));
+
+        var disconnectCmd = new AsyncRelayCommand(DisconnectAsync, () => IsConnected);
+        disconnectCmd.CommandFailed += (_, ex) => Log.Add(LogEntry.Error($"Disconnect failed: {ex.Message}"));
+
+        var estopCmd = new AsyncRelayCommand(() => _engine.EmergencyStopAsync());
+        estopCmd.CommandFailed += (_, ex) => Log.Add(LogEntry.Error($"Emergency stop failed: {ex.Message}"));
+
+        ConnectCommand = connectCmd;
+        DisconnectCommand = disconnectCmd;
+        EmergencyStopCommand = estopCmd;
 
         // Trigger initial port enumeration
         _ = ConnectionPanel.RefreshPortsCommand.TryExecute();
@@ -93,6 +102,25 @@ public sealed class MainWindowViewModel : ViewModelBase
     {
         ConnectionPanel.PersistToConfig(_config);
         JobBehavior.PersistToConfig(_config);
+
+        // Validate required port selections before attempting to connect
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(_config.VirtualPortProxy))
+            missing.Add("Virtual COM (Proxy side)");
+        if (string.IsNullOrWhiteSpace(_config.VirtualPortCandle))
+            missing.Add("Virtual COM (Candle side)");
+        if (string.IsNullOrWhiteSpace(_config.GrblPort))
+            missing.Add("GRBL Port");
+        if (string.IsNullOrWhiteSpace(_config.VfdPort))
+            missing.Add("VFD Port");
+
+        if (missing.Count > 0)
+        {
+            Log.Add(LogEntry.Error($"Cannot connect — the following ports are not configured: {string.Join(", ", missing)}"));
+            Log.Add(LogEntry.Info("Please select a COM port for each connection before clicking Connect."));
+            return;
+        }
+
         ConfigService.Save(_config);
 
         await _engine.StartAsync(_config);

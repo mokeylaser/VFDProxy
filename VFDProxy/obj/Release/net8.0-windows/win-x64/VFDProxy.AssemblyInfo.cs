@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("GRBL ↔ Huanyang VFD proxy for CNC senders (Candle etc.)")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("0.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.1.0+4126006e6dd3d45a7c37a381cbcf44ab114613ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.1.0+0b2bac1d127819473ddb15b687be01cc7d0300bb")]
 [assembly: System.Reflection.AssemblyProductAttribute("VFDProxy")]
 [assembly: System.Reflection.AssemblyTitleAttribute("VFDProxy")]
 [assembly: System.Reflection.AssemblyVersionAttribute("0.1.0.0")]

@@ -94,6 +94,20 @@ public sealed class ConnectionPanelViewModel : ViewModelBase
         {
             LogCallback?.Invoke(LogEntry.Info(
                 $"Port scan: found {ports.Count} port(s): {string.Join(", ", ports.Select(p => p.PortName))}"));
+
+            // Check for com0com virtual port pairs
+            bool hasVirtualPorts = ports.Any(p =>
+                p.FriendlyName.Contains("com0com", StringComparison.OrdinalIgnoreCase) ||
+                p.FriendlyName.Contains("virtual", StringComparison.OrdinalIgnoreCase) ||
+                p.FriendlyName.Contains("emulator", StringComparison.OrdinalIgnoreCase));
+
+            if (!hasVirtualPorts)
+            {
+                LogCallback?.Invoke(LogEntry.Warn(
+                    "No virtual COM port pair detected. VFDProxy requires a virtual serial port pair " +
+                    "(e.g., com0com) so that Candle can communicate through VFDProxy. " +
+                    "Install com0com and create a port pair, or type the port names manually in the dropdowns."));
+            }
         }
     }
 
