@@ -71,6 +71,9 @@ public sealed class MainWindowViewModel : ViewModelBase
         JobBehavior     = new JobBehaviorViewModel();
         Log             = new LogPanelViewModel();
 
+        // Wire port scan logging so diagnostics appear in the log panel
+        ConnectionPanel.LogCallback = entry => Log.Add(entry);
+
         // Report config load errors to the log
         if (ConfigService.LastError is not null)
             Log.Add(LogEntry.Warn($"{ConfigService.LastError} — using defaults."));

@@ -32,6 +32,11 @@ public sealed class ConnectionPanelViewModel : ViewModelBase
     public string VfdStatus     { get => _vfdStatus;     set => SetField(ref _vfdStatus,     value); }
     public string VirtualStatus { get => _virtualStatus; set => SetField(ref _virtualStatus, value); }
 
+    /// <summary>
+    /// Optional callback for logging port scan results. Set by MainWindowViewModel.
+    /// </summary>
+    public Action<LogEntry>? LogCallback { get; set; }
+
     public ICommand RefreshPortsCommand { get; }
 
     public ConnectionPanelViewModel()
@@ -41,7 +46,16 @@ public sealed class ConnectionPanelViewModel : ViewModelBase
 
     private async Task RefreshPortsAsync()
     {
-        var ports = await ComPortEnumerator.GetPortsAsync();
+        IReadOnlyList<ComPortInfo> ports;
+        try
+        {
+            ports = await ComPortEnumerator.GetPortsAsync();
+        }
+        catch (Exception ex)
+        {
+            LogCallback?.Invoke(LogEntry.Error($"Port scan failed: {ex.Message}"));
+            return;
+        }
 
         // Save selections
         var prevCandle = VirtualPortCandle;
@@ -60,6 +74,27 @@ public sealed class ConnectionPanelViewModel : ViewModelBase
             GrblPort          = ports.Any(p => p.PortName == prevGrbl)   ? prevGrbl   : null;
             VfdPort           = ports.Any(p => p.PortName == prevVfd)    ? prevVfd    : null;
         });
+
+        // Log scan results
+        if (ComPortEnumerator.LastDiagnostic is not null)
+        {
+            LogCallback?.Invoke(LogEntry.Warn(ComPortEnumerator.LastDiagnostic));
+        }
+
+        if (ports.Count == 0)
+        {
+            LogCallback?.Invoke(LogEntry.Warn(
+                "No COM ports found. Troubleshooting: " +
+                "(1) Check Device Manager for COM ports under 'Ports (COM & LPT)'. " +
+                "(2) Ensure USB-serial drivers are installed for your devices. " +
+                "(3) Verify com0com virtual port pair is configured. " +
+                "(4) Try running VFDProxy as Administrator if ports exist but aren't listed."));
+        }
+        else
+        {
+            LogCallback?.Invoke(LogEntry.Info(
+                $"Port scan: found {ports.Count} port(s): {string.Join(", ", ports.Select(p => p.PortName))}"));
+        }
     }
 
     public void ApplyConfig(AppConfig config)

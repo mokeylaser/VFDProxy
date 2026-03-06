@@ -9,6 +9,11 @@ namespace VFDProxy.Services;
 /// </summary>
 public static class ComPortEnumerator
 {
+    /// <summary>
+    /// Diagnostic message from the last port scan (null if WMI succeeded without issues).
+    /// </summary>
+    public static string? LastDiagnostic { get; private set; }
+
     public static async Task<IReadOnlyList<ComPortInfo>> GetPortsAsync()
     {
         return await Task.Run(GetPorts);
@@ -16,7 +21,9 @@ public static class ComPortEnumerator
 
     public static IReadOnlyList<ComPortInfo> GetPorts()
     {
+        LastDiagnostic = null;
         var result = new List<ComPortInfo>();
+        bool wmiFailed = false;
 
         try
         {
@@ -32,18 +39,31 @@ public static class ComPortEnumerator
                     result.Add(new ComPortInfo(portName, name));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // WMI unavailable — fall back to bare port names
+            wmiFailed = true;
+            LastDiagnostic = $"WMI port query failed: {ex.Message}. Falling back to SerialPort.GetPortNames().";
         }
 
         // Add any ports not picked up by WMI (rare but possible)
-        var wmiBound = new HashSet<string>(result.Select(p => p.PortName), StringComparer.OrdinalIgnoreCase);
-        foreach (var port in System.IO.Ports.SerialPort.GetPortNames())
+        try
         {
-            if (!wmiBound.Contains(port))
-                result.Add(new ComPortInfo(port, port));
+            var wmiBound = new HashSet<string>(result.Select(p => p.PortName), StringComparer.OrdinalIgnoreCase);
+            foreach (var port in System.IO.Ports.SerialPort.GetPortNames())
+            {
+                if (!wmiBound.Contains(port))
+                    result.Add(new ComPortInfo(port, port));
+            }
         }
+        catch (Exception ex)
+        {
+            LastDiagnostic = wmiFailed
+                ? $"{LastDiagnostic} SerialPort.GetPortNames() also failed: {ex.Message}"
+                : $"SerialPort.GetPortNames() failed: {ex.Message}";
+        }
+
+        if (result.Count == 0 && LastDiagnostic is null)
+            LastDiagnostic = "No COM ports detected on this system.";
 
         var comparer = new NaturalPortComparer();
         return result
