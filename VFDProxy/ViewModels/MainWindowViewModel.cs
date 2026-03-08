@@ -1,4 +1,6 @@
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using VFDProxy.Drivers;
 using VFDProxy.Engine;
 using VFDProxy.Infrastructure;
@@ -133,7 +135,11 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private void OnStateChanged(object? sender, StateChangedEventArgs e)
     {
-        DispatcherService.Invoke(() =>
+        // Use BeginInvoke to avoid blocking engine threads and to prevent
+        // synchronous Dispatcher.Invoke reentrancy during layout passes.
+        var d = Application.Current?.Dispatcher;
+        if (d is null) return;
+        d.BeginInvoke(() =>
         {
             State = e.Current;
             ErrorMessage = e.ErrorMessage;
@@ -156,7 +162,9 @@ public sealed class MainWindowViewModel : ViewModelBase
 
     private void OnVfdStatusUpdated(object? sender, VfdStatusUpdatedEventArgs e)
     {
-        DispatcherService.Invoke(() =>
+        var d = Application.Current?.Dispatcher;
+        if (d is null) return;
+        d.BeginInvoke(() =>
         {
             VfdStatus = e.Status;
             int polePairs = Math.Max(1, _config.PolePairs);

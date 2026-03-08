@@ -34,23 +34,19 @@ public sealed class LogPanelViewModel : ViewModelBase
 
     /// <summary>
     /// Thread-safe log entry addition.
-    /// Uses BeginInvoke (async) instead of Invoke (sync) to prevent reentrancy
-    /// during WPF layout passes, which causes "ItemsControl inconsistent with
-    /// its items source" crashes in VirtualizingStackPanel.
+    /// ALWAYS uses BeginInvoke (async dispatch) regardless of calling thread.
+    /// This prevents two classes of crashes:
+    ///   1. Cross-thread ObservableCollection modification
+    ///   2. CollectionChanged reentrancy during WPF layout passes when multiple
+    ///      entries are added synchronously (e.g., during Connect which fires
+    ///      5+ log entries in one execution frame)
     /// </summary>
     public void Add(LogEntry entry)
     {
         var dispatcher = Application.Current?.Dispatcher;
         if (dispatcher is null) return;
 
-        if (dispatcher.CheckAccess())
-        {
-            AddCore(entry);
-        }
-        else
-        {
-            dispatcher.BeginInvoke(DispatcherPriority.Background, () => AddCore(entry));
-        }
+        dispatcher.BeginInvoke(DispatcherPriority.Background, () => AddCore(entry));
     }
 
     private void AddCore(LogEntry entry)

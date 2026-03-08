@@ -6,6 +6,10 @@ namespace VFDProxy;
 
 public partial class App : Application
 {
+    // Reentrancy guard — prevents nested MessageBox.Show from creating
+    // a recursive message pump that overflows the stack.
+    private bool _handlingException;
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -23,15 +27,38 @@ public partial class App : Application
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Trace.TraceError($"[VFDProxy] UI thread exception: {e.Exception}");
-
-        MessageBox.Show(
-            $"An unexpected error occurred:\n\n{e.Exception.Message}\n\nThe application will try to continue.",
-            "VFDProxy Error",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
-
-        // Mark handled so the app doesn't crash
         e.Handled = true;
+
+        // Guard against reentrancy: MessageBox.Show() creates a nested message pump.
+        // If the same exception recurs during the nested pump (e.g., layout errors),
+        // this handler would re-enter, creating infinite recursion → stack overflow.
+        if (_handlingException)
+            return;
+
+        _handlingException = true;
+        try
+        {
+            // Show the error asynchronously to avoid nested pump issues
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, () =>
+            {
+                try
+                {
+                    MessageBox.Show(
+                        $"An unexpected error occurred:\n\n{e.Exception.Message}\n\nThe application will try to continue.",
+                        "VFDProxy Error",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
+                }
+                finally
+                {
+                    _handlingException = false;
+                }
+            });
+        }
+        catch
+        {
+            _handlingException = false;
+        }
     }
 
     private static void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
